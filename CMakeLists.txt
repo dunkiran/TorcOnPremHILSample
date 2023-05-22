@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.3)
+project(s3_test)
+set(CMAKE_CXX_STANDARD 11)
+add_executable(dut dut.cpp)
+add_executable(testSet testSet.cpp)
