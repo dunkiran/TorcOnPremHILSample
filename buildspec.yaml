@@ -1,0 +1,54 @@
+version: 0.2
+phases:
+
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - echo "AWS_REGION = $AWS_REGION"
+      - echo "ECR_REGISTRY = $ECR_REGISTRY"
+      - echo "ECR_REGISTRY_TEST = $ECR_REGISTRY_TEST"
+      - echo "ECR_PATH = $ECR_PATH"
+      #- echo "BUILD_PROJECT_NAME = $BUILD_PROJECT_NAME"
+      - echo "CODEBUILD_SRC_DIR = $CODEBUILD_SRC_DIR"
+      - export ECR_PW=$(aws ecr get-login-password --region us-west-2)
+      - echo "ECR_PW = $ECR_PW"
+      - echo $ECR_PW | docker login --username AWS --password-stdin ${ECR_PATH}
+      - export BUILD_PROJECT_NAME=$(echo $CODEBUILD_SRC_DIR | awk '{split($0,parts,"/"); print tolower(parts[length(parts)]) }')
+      - echo "BUILD_PROJECT_NAME = $BUILD_PROJECT_NAME"
+
+  build:
+    commands:
+      # # configure application executable, source files and linked libraries.
+      # - cmake .
+      # # build the application
+      # - make
+      # # unit test. we can test the s3_test executable by copying a local file, for example test_source.txt to an existing s3 bucket and name the file as test_dest.txt
+      # - ./s3_test $SOURCE_FILE $BUCKET_NAME $DEST_FILE $REGION
+    
+      # # create docker image
+      # - docker build -t dut:v1 .
+      # - docker tag dut:v1 ${ECR_REGISTRY}:v1      
+      # - docker push ${ECR_REGISTRY}:v1
+      - docker-compose build
+      - docker image ls
+      - docker tag ${BUILD_PROJECT_NAME}-dut:latest ${ECR_REGISTRY}:v${CODEBUILD_BUILD_NUMBER}
+      - docker push ${ECR_REGISTRY}:v${CODEBUILD_BUILD_NUMBER}
+      
+      - docker tag ${BUILD_PROJECT_NAME}-testset:latest ${ECR_REGISTRY_TEST}:v${CODEBUILD_BUILD_NUMBER}
+      - docker push ${ECR_REGISTRY_TEST}:v${CODEBUILD_BUILD_NUMBER}
+      
+      
+ # finally:
+ #     commands:
+     # - >
+     #  aws sqs send-message --queue-url "https://sqs.us-west-2.amazonaws.com/127293588653/TorcHilSqsqueue.fifo" --message-body "testing"  --message-attributes '{"keyId": {"DataType":"String", "StringValue":"mykeyId1"}}' --message-group-id "Test12"
+
+        
+      # test
+      # - docker run ${ECR_REGISTRY}:v1 $SOURCE_FILE $BUCKET_NAME $DEST_FILE $REGION
+
+  post_build:
+      commands:
+      - echo "sending message ..."
+      - > 
+       aws sqs send-message --queue-url ${SQS_QUEUE} --message-body "testing"  --message-attributes '{"dutpackage": {"DataType":"String", "StringValue":"'${ECR_REGISTRY}':v'${CODEBUILD_BUILD_NUMBER}'"}, "testpackage": {"DataType":"String", "StringValue":"'${ECR_REGISTRY_TEST}':v'${CODEBUILD_BUILD_NUMBER}'"}, "buildnumber": {"DataType":"String", "StringValue":"'${CODEBUILD_BUILD_NUMBER}'"}}'
