@@ -1,0 +1,20 @@
+version: '3'
+services:
+  dut:
+    # will build ./docker/dut/Dockerfile
+    build:
+      context: .
+      dockerfile: ./docker/dut/Dockerfile
+    ports:
+     - "20001:20001"
+    # volumes:
+    #  - .:/code
+  testset:
+    # will build ./docker/testSet/Dockerfile
+    build:
+      context: .
+      dockerfile: ./docker/testSet/Dockerfile
+    ports:
+     - "20001:20001"
+    volumes:
+     - ./results:/app/results
